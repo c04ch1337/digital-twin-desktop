@@ -53,13 +53,14 @@ impl ConversationRepository for SqliteConversationRepository {
     async fn create(&self, conversation: Conversation) -> RepositoryResult<Conversation> {
         let mut tx = self.pool.begin().await.map_err(|e| RepositoryError::DatabaseError(e.to_string()))?;
 
-        // Insert conversation
+        // Insert conversation with agent_id
         sqlx::query(
-            "INSERT INTO conversations (id, title, state, metadata) VALUES (?, ?, ?, ?)"
+            "INSERT INTO conversations (id, title, state, agent_id, metadata) VALUES (?, ?, ?, ?, ?)"
         )
         .bind(conversation.id.to_string())
         .bind(&conversation.title)
         .bind(conversation.state.to_string())
+        .bind(conversation.participant_agent_ids.first().map(|id| id.to_string()))
         .bind(serde_json::to_string(&conversation.metadata).unwrap_or("{}".to_string()))
         .execute(&mut *tx)
         .await
@@ -67,14 +68,23 @@ impl ConversationRepository for SqliteConversationRepository {
 
         // Insert messages if any
         for message in &conversation.messages {
+            let agent_id = match &message.sender {
+                crate::core::domain::models::conversation::MessageSender::Agent { agent_id } => Some(agent_id.to_string()),
+                _ => None,
+            };
+
             sqlx::query(
-                "INSERT INTO messages (id, conversation_id, role, content, metadata) 
-                 VALUES (?, ?, ?, ?, ?)"
+                "INSERT INTO messages (id, conversation_id, role, content, agent_id, token_count, model, content_type, metadata)
+                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             )
             .bind(message.id.to_string())
             .bind(conversation.id.to_string())
             .bind(&message.role)
             .bind(&message.content)
+            .bind(agent_id)
+            .bind(message.metadata.token_count)
+            .bind(&message.metadata.model)
+            .bind(format!("{:?}", message.content_type))
             .bind(serde_json::to_string(&message.metadata).unwrap_or("{}".to_string()))
             .execute(&mut *tx)
             .await
@@ -89,7 +99,7 @@ impl ConversationRepository for SqliteConversationRepository {
     async fn get_by_id(&self, id: ConversationId) -> RepositoryResult<Conversation> {
         let conversation = sqlx::query_as!(
             ConversationRow,
-            "SELECT id, title, state, created_at, updated_at, metadata FROM conversations WHERE id = ?",
+            "SELECT id, title, state, agent_id, created_at, updated_at, metadata FROM conversations WHERE id = ?",
             id.to_string()
         )
         .fetch_optional(&self.pool)
@@ -102,7 +112,7 @@ impl ConversationRepository for SqliteConversationRepository {
 
         let messages = sqlx::query_as!(
             MessageRow,
-            "SELECT id, conversation_id, role, content, created_at, metadata 
+            "SELECT id, conversation_id, role, content, agent_id, token_count, model, content_type, created_at, metadata
              FROM messages WHERE conversation_id = ? ORDER BY created_at",
             id.to_string()
         )
@@ -210,14 +220,23 @@ impl ConversationRepository for SqliteConversationRepository {
         conversation_id: ConversationId,
         message: Message,
     ) -> RepositoryResult<Message> {
+        let agent_id = match &message.sender {
+            crate::core::domain::models::conversation::MessageSender::Agent { agent_id } => Some(agent_id.to_string()),
+            _ => None,
+        };
+
         sqlx::query(
-            "INSERT INTO messages (id, conversation_id, role, content, metadata) 
-             VALUES (?, ?, ?, ?, ?)"
+            "INSERT INTO messages (id, conversation_id, role, content, agent_id, token_count, model, content_type, metadata)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(message.id.to_string())
         .bind(conversation_id.to_string())
         .bind(&message.role)
         .bind(&message.content)
+        .bind(agent_id)
+        .bind(message.metadata.token_count)
+        .bind(&message.metadata.model)
+        .bind(format!("{:?}", message.content_type))
         .bind(serde_json::to_string(&message.metadata).unwrap_or("{}".to_string()))
         .execute(&self.pool)
         .await
@@ -233,10 +252,10 @@ impl ConversationRepository for SqliteConversationRepository {
     ) -> RepositoryResult<PaginatedResult<Message>> {
         let messages = sqlx::query_as!(
             MessageRow,
-            "SELECT id, conversation_id, role, content, created_at, metadata 
-             FROM messages 
-             WHERE conversation_id = ? 
-             ORDER BY created_at 
+            "SELECT id, conversation_id, role, content, agent_id, token_count, model, content_type, created_at, metadata
+             FROM messages
+             WHERE conversation_id = ?
+             ORDER BY created_at
              LIMIT ? OFFSET ?",
             conversation_id.to_string(),
             pagination.limit as i64,
@@ -269,6 +288,7 @@ struct ConversationRow {
     id: String,
     title: String,
     state: String,
+    agent_id: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     metadata: String,
@@ -280,6 +300,10 @@ struct MessageRow {
     conversation_id: String,
     role: String,
     content: String,
+    agent_id: Option<String>,
+    token_count: Option<i32>,
+    model: Option<String>,
+    content_type: Option<String>,
     created_at: DateTime<Utc>,
     metadata: String,
 }

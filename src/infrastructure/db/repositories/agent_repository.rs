@@ -52,14 +52,17 @@ impl SqliteAgentRepository {
 impl AgentRepository for SqliteAgentRepository {
     async fn create(&self, agent: Agent) -> RepositoryResult<Agent> {
         sqlx::query(
-            "INSERT INTO agents (id, name, description, state, capabilities, metadata) 
-             VALUES (?, ?, ?, ?, ?, ?)"
+            "INSERT INTO agents (id, name, description, state, capabilities, system_prompt, instructions, prompt_version, metadata)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
         )
         .bind(agent.id.to_string())
         .bind(&agent.name)
         .bind(&agent.description)
         .bind(agent.state.to_string())
         .bind(serde_json::to_string(&agent.capabilities).unwrap_or("[]".to_string()))
+        .bind(&agent.system_prompt)
+        .bind(&agent.system_prompt) // instructions field
+        .bind("1.0.0") // prompt_version
         .bind(serde_json::to_string(&agent.metadata).unwrap_or("{}".to_string()))
         .execute(&self.pool)
         .await
@@ -71,7 +74,7 @@ impl AgentRepository for SqliteAgentRepository {
     async fn get_by_id(&self, id: AgentId) -> RepositoryResult<Agent> {
         let agent = sqlx::query_as!(
             AgentRow,
-            "SELECT id, name, description, state, capabilities, created_at, updated_at, metadata 
+            "SELECT id, name, description, state, capabilities, system_prompt, instructions, prompt_version, created_at, updated_at, metadata
              FROM agents WHERE id = ?",
             id.to_string()
         )
@@ -97,8 +100,9 @@ impl AgentRepository for SqliteAgentRepository {
 
     async fn update(&self, agent: Agent) -> RepositoryResult<Agent> {
         sqlx::query(
-            "UPDATE agents 
-             SET name = ?, description = ?, state = ?, capabilities = ?, 
+            "UPDATE agents
+             SET name = ?, description = ?, state = ?, capabilities = ?,
+                 system_prompt = ?, instructions = ?, prompt_version = ?,
                  updated_at = CURRENT_TIMESTAMP, metadata = ?
              WHERE id = ?"
         )
@@ -106,6 +110,9 @@ impl AgentRepository for SqliteAgentRepository {
         .bind(&agent.description)
         .bind(agent.state.to_string())
         .bind(serde_json::to_string(&agent.capabilities).unwrap_or("[]".to_string()))
+        .bind(&agent.system_prompt)
+        .bind(&agent.system_prompt) // instructions field
+        .bind("1.0.0") // prompt_version
         .bind(serde_json::to_string(&agent.metadata).unwrap_or("{}".to_string()))
         .bind(agent.id.to_string())
         .execute(&self.pool)
@@ -132,7 +139,7 @@ impl AgentRepository for SqliteAgentRepository {
         pagination: Pagination,
     ) -> RepositoryResult<PaginatedResult<Agent>> {
         let mut query = String::from(
-            "SELECT id, name, description, state, capabilities, created_at, updated_at, metadata 
+            "SELECT id, name, description, state, capabilities, system_prompt, instructions, prompt_version, created_at, updated_at, metadata
              FROM agents"
         );
         let params = Self::build_filters(&mut query, &filters).await;
@@ -190,9 +197,9 @@ impl AgentRepository for SqliteAgentRepository {
     ) -> RepositoryResult<PaginatedResult<Agent>> {
         let agents = sqlx::query_as!(
             AgentRow,
-            "SELECT id, name, description, state, capabilities, created_at, updated_at, metadata 
-             FROM agents 
-             WHERE state = ? 
+            "SELECT id, name, description, state, capabilities, system_prompt, instructions, prompt_version, created_at, updated_at, metadata
+             FROM agents
+             WHERE state = ?
              LIMIT ? OFFSET ?",
             state.to_string(),
             pagination.limit as i64,
@@ -237,9 +244,9 @@ impl AgentRepository for SqliteAgentRepository {
     ) -> RepositoryResult<PaginatedResult<Agent>> {
         let agents = sqlx::query_as!(
             AgentRow,
-            "SELECT id, name, description, state, capabilities, created_at, updated_at, metadata 
-             FROM agents 
-             WHERE json_array_contains(capabilities, ?) 
+            "SELECT id, name, description, state, capabilities, system_prompt, instructions, prompt_version, created_at, updated_at, metadata
+             FROM agents
+             WHERE json_array_contains(capabilities, ?)
              LIMIT ? OFFSET ?",
             capability_type,
             pagination.limit as i64,
@@ -299,6 +306,9 @@ struct AgentRow {
     description: String,
     state: String,
     capabilities: String,
+    system_prompt: Option<String>,
+    instructions: Option<String>,
+    prompt_version: Option<String>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
     metadata: String,

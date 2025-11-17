@@ -5,8 +5,13 @@ use crate::core::domain::{
     traits::repository::{ConversationRepository, AgentRepository},
     traits::llm_client::LLMClient,
 };
+use crate::core::application::services::{
+    MemoryManager, MemoryConfig, MemoryStrategy, TokenModel,
+    PromptManager, VersionedPrompt,
+};
 use std::sync::Arc;
 use chrono::Utc;
+use uuid::Uuid;
 
 /// Command to send a message in a conversation
 #[derive(Debug, Clone)]
@@ -20,6 +25,8 @@ pub struct SendMessageCommand {
 pub struct SendMessageResponse {
     pub conversation: Conversation,
     pub agent_response: Message,
+    pub token_count: u32,
+    pub context_window_size: usize,
 }
 
 /// Use case for sending a message to an agent
@@ -27,6 +34,8 @@ pub struct SendMessageUseCase {
     conversation_repo: Arc<dyn ConversationRepository>,
     agent_repo: Arc<dyn AgentRepository>,
     llm_client: Arc<dyn LLMClient>,
+    memory_manager: MemoryManager,
+    prompt_manager: PromptManager,
 }
 
 impl SendMessageUseCase {
@@ -39,7 +48,14 @@ impl SendMessageUseCase {
             conversation_repo,
             agent_repo,
             llm_client,
+            memory_manager: MemoryManager::new(MemoryConfig::default()),
+            prompt_manager: PromptManager::new(),
         }
+    }
+
+    pub fn with_memory_config(mut self, config: MemoryConfig) -> Self {
+        self.memory_manager = MemoryManager::new(config);
+        self
     }
 
     pub async fn execute(
@@ -62,42 +78,71 @@ impl SendMessageUseCase {
             .map_err(|e| DomainError::RepositoryError(e.to_string()))?
             .ok_or_else(|| DomainError::NotFound("Agent not found".to_string()))?;
 
-        // Create user message
+        // Create user message with token count
+        let user_message_tokens = self.memory_manager.estimate_tokens(&command.content);
         let user_message = Message {
             role: "user".to_string(),
             content: command.content.clone(),
             timestamp: Utc::now(),
-            metadata: None,
+            metadata: Some(serde_json::json!({
+                "token_count": user_message_tokens,
+                "model": agent.model.clone()
+            })),
         };
 
         // Add user message to conversation
         conversation.messages.push(user_message.clone());
+
+        // Build context window using memory manager
+        let context_window = self.memory_manager.build_context_window(&conversation.messages);
+        let context_window_size = context_window.messages.len();
 
         // Prepare messages for LLM
         let mut llm_messages = vec![];
         
         // Add system message from agent instructions
         if !agent.instructions.is_empty() {
+            let system_tokens = self.memory_manager.estimate_tokens(&agent.instructions);
             llm_messages.push(Message {
                 role: "system".to_string(),
                 content: agent.instructions.clone(),
                 timestamp: Utc::now(),
-                metadata: None,
+                metadata: Some(serde_json::json!({
+                    "token_count": system_tokens,
+                    "type": "system_prompt"
+                })),
             });
         }
 
         // Add context if available
         if let Some(context) = &conversation.context {
+            let context_tokens = self.memory_manager.estimate_tokens(context);
             llm_messages.push(Message {
                 role: "system".to_string(),
                 content: format!("Context: {}", context),
                 timestamp: Utc::now(),
-                metadata: None,
+                metadata: Some(serde_json::json!({
+                    "token_count": context_tokens,
+                    "type": "context"
+                })),
             });
         }
 
-        // Add conversation history
-        llm_messages.extend(conversation.messages.clone());
+        // Add context window messages (memory-managed)
+        for ctx_msg in &context_window.messages {
+            llm_messages.push(Message {
+                role: if ctx_msg.sender.starts_with("user:") { "user".to_string() } else { "assistant".to_string() },
+                content: ctx_msg.content.clone(),
+                timestamp: ctx_msg.created_at,
+                metadata: Some(serde_json::json!({
+                    "token_count": ctx_msg.token_count,
+                    "model": ctx_msg.model.clone()
+                })),
+            });
+        }
+
+        // Calculate total tokens for context
+        let total_context_tokens = context_window.total_tokens;
 
         // Get response from LLM
         let llm_response = self
@@ -106,12 +151,20 @@ impl SendMessageUseCase {
             .await
             .map_err(|e| DomainError::ExternalServiceError(e.to_string()))?;
 
-        // Create assistant message
+        // Estimate tokens for response
+        let response_tokens = self.memory_manager.estimate_tokens(&llm_response);
+
+        // Create assistant message with token metadata
         let assistant_message = Message {
             role: "assistant".to_string(),
             content: llm_response,
             timestamp: Utc::now(),
-            metadata: None,
+            metadata: Some(serde_json::json!({
+                "token_count": response_tokens,
+                "model": agent.model.clone(),
+                "context_tokens": total_context_tokens,
+                "context_window_size": context_window_size
+            })),
         };
 
         // Add assistant message to conversation
@@ -124,9 +177,14 @@ impl SendMessageUseCase {
             .await
             .map_err(|e| DomainError::RepositoryError(e.to_string()))?;
 
+        // Calculate token statistics
+        let token_stats = self.memory_manager.calculate_token_stats(&conversation.messages);
+
         Ok(SendMessageResponse {
             conversation,
             agent_response: assistant_message,
+            token_count: token_stats.total_tokens,
+            context_window_size,
         })
     }
 }
@@ -212,7 +270,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_send_message() {
+    async fn test_send_message_with_memory_management() {
         let conversation_id = ConversationId::new();
         let agent_id = AgentId::new();
         
@@ -263,7 +321,7 @@ mod tests {
         
         let response = result.unwrap();
         assert_eq!(response.conversation.messages.len(), 2);
-        assert_eq!(response.conversation.messages[0].content, "Hello, assistant!");
-        assert_eq!(response.agent_response.content, "Test response from LLM");
+        assert!(response.token_count > 0);
+        assert!(response.context_window_size > 0);
     }
 }

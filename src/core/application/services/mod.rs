@@ -8,6 +8,8 @@ pub mod agent_service;
 pub mod twin_service;
 pub mod simulation_service;
 pub mod tool_service;
+pub mod memory_manager;
+pub mod prompt_manager;
 
 // Re-export services for convenient access
 pub use conversation_service::ConversationService;
@@ -21,4 +23,11 @@ pub use simulation_service::{
 pub use tool_service::{
     ToolService, ToolRegistration, ToolExecutionRequest,
     ToolValidationResult
+};
+pub use memory_manager::{
+    MemoryManager, MemoryConfig, MemoryStrategy, TokenModel,
+    ContextWindow, TokenStats
+};
+pub use prompt_manager::{
+    PromptManager, VersionedPrompt, PromptChange, PromptDiff
 };
