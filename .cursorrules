@@ -1,0 +1,232 @@
+# Digital Twin Agentic AI Desktop - Cursor IDE Rules
+
+## Project Context
+This is a Rust-based desktop application using Tauri for cross-platform support. The application implements a sophisticated agentic AI system for digital twin simulation and monitoring.
+
+## Architecture Principles
+
+### 1. Clean Architecture (Onion/Hexagonal)
+- **Core Domain** (innermost): Pure business logic, no external dependencies
+- **Application Layer**: Use cases that orchestrate domain logic
+- **Infrastructure Layer**: External integrations (LLM APIs, database, file system)
+- **API Layer**: Tauri commands for frontend-backend communication
+
+### 2. Dependency Rules
+- Inner layers NEVER depend on outer layers
+- Outer layers depend on inner layers through traits/interfaces
+- Use dependency injection via trait objects or generics
+
+### 3. Code Organization
+```
+core/       → Pure domain logic, zero external dependencies
+application/ → Use cases, depends only on core
+infrastructure/ → External integrations, implements core interfaces
+api/        → Tauri commands, depends on application
+```
+
+## Rust Best Practices
+
+### Error Handling
+- Use `thiserror` for domain errors
+- Use `anyhow` for application/infrastructure errors
+- Never use `.unwrap()` in production code
+- Always propagate errors with `?` operator
+- Create domain-specific error types
+
+```rust
+// Good
+#[derive(Debug, thiserror::Error)]
+pub enum AgentError {
+    #[error("Tool not found: {0}")]
+    ToolNotFound(String),
+    
+    #[error("LLM request failed: {0}")]
+    LlmRequestFailed(#[from] reqwest::Error),
+}
+
+// Usage
+pub async fn execute_tool(&self, name: &str) -> Result<String, AgentError> {
+    let tool = self.registry.get(name)
+        .ok_or_else(|| AgentError::ToolNotFound(name.to_string()))?;
+    Ok(tool.execute().await?)
+}
+```
+
+### Async/Await
+- Use `tokio` for async runtime
+- Prefer `async fn` over manual `Future` implementations
+- Use `#[tokio::test]` for async tests
+- Handle cancellation gracefully
+
+### Type Safety
+- Use strong typing over stringly-typed code
+- Leverage newtype pattern for domain concepts
+- Use enums for state machines
+- Prefer `Option<T>` over nullable types
+
+```rust
+// Good: Strong typing
+pub struct ConversationId(Uuid);
+pub struct MessageId(Uuid);
+
+pub enum AgentState {
+    Idle,
+    Thinking { context: Context },
+    ExecutingTool { tool: String, input: String },
+    AwaitingUserInput,
+    Error { error: AgentError },
+}
+```
+
+### Traits and Generics
+- Define traits in core, implement in infrastructure
+- Use trait bounds to constrain generics
+- Prefer static dispatch (`impl Trait`) over dynamic dispatch (`Box<dyn Trait>`)
+
+```rust
+// core/tools/tool_trait.rs
+#[async_trait]
+pub trait Tool: Send + Sync {
+    fn name(&self) -> &str;
+    fn description(&self) -> &str;
+    async fn execute(&self, input: &str) -> Result<String, ToolError>;
+}
+
+// infrastructure/tools/web_search.rs
+pub struct WebSearchTool {
+    api_key: String,
+}
+
+#[async_trait]
+impl Tool for WebSearchTool {
+    fn name(&self) -> &str { "web_search" }
+    fn description(&self) -> &str { "Search the web..." }
+    async fn execute(&self, input: &str) -> Result<String, ToolError> {
+        // Implementation
+    }
+}
+```
+
+## Agent System Guidelines
+
+### State Machine
+- Always model agent state explicitly
+- Use enums for state representation
+- Implement clear state transitions
+- Add logging for all state changes
+
+### Tool System
+- All tools implement the `Tool` trait
+- Tools are registered in a `ToolRegistry`
+- Tool execution is sandboxed and time-limited
+- Tool descriptions are used by LLM for selection
+
+### Context Management
+- Implement token counting
+- Truncate conversation history intelligently
+- Summarize old messages when context limit approached
+- Include only relevant file contents
+
+## Tauri Commands Best Practices
+
+### Command Structure
+```rust
+#[tauri::command]
+pub async fn send_message(
+    state: State<'_, AppState>,
+    message: String,
+    conversation_id: Option<String>,
+) -> Result<MessageResponse, String> {
+    // 1. Validate input
+    if message.trim().is_empty() {
+        return Err("Message cannot be empty".to_string());
+    }
+    
+    // 2. Call application layer
+    let use_case = SendMessageUseCase::new(&state.agent, &state.repo);
+    let response = use_case.execute(message, conversation_id)
+        .await
+        .map_err(|e| e.to_string())?;
+    
+    // 3. Return serialized response
+    Ok(response)
+}
+```
+
+### State Management
+- Use `State<'_, AppState>` for global state
+- Keep AppState minimal (connection pools, config)
+- Avoid mutable state; prefer message passing
+
+## Testing Guidelines
+
+### Unit Tests
+- Test all pure functions in `core/`
+- Mock external dependencies
+- Use `#[cfg(test)]` modules
+- Test error cases explicitly
+
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_planner_creates_valid_plan() {
+        let planner = Planner::new();
+        let plan = planner.create_plan("Search for Rust resources").unwrap();
+        assert!(plan.steps.len() > 0);
+        assert_eq!(plan.steps[0].tool, "web_search");
+    }
+}
+```
+
+### Integration Tests
+- Test tool implementations with mocked APIs
+- Test database operations with temporary SQLite files
+- Test LLM clients with mock servers
+
+### E2E Tests
+- Test critical user journeys
+- Use actual Tauri app instance
+- Test IPC communication
+
+## Performance Considerations
+
+### Database
+- Use connection pooling
+- Enable WAL mode for SQLite
+- Create indexes for frequently queried columns
+- Use prepared statements
+
+### Async Performance
+- Batch operations where possible
+- Use `tokio::spawn` for CPU-intensive work
+- Stream large responses (don't buffer in memory)
+- Set appropriate timeouts
+
+### Memory Management
+- Use `Arc<T>` for shared state
+- Avoid cloning large data structures
+- Use streaming for LLM responses
+- Implement conversation history limits
+
+## Security Rules
+
+### API Keys
+- Never hardcode API keys
+- Store encrypted at rest
+- Load from environment or secure storage
+- Rotate regularly
+
+### User Data
+- Encrypt sensitive data
+- Implement proper access controls
+- Respect user privacy settings
+- Implement data retention policies
+
+### Tool Execution
+- Sandbox all tool executions
+- Implement timeouts for all external calls
+- Validate all inputs before execution
+- Require user confirmation for dangerous operations
