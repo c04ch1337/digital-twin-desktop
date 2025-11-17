@@ -1,0 +1,41 @@
+[
+  {
+    "id": "1",
+    "name": "Factory Twin",
+    "description": "Digital twin of a manufacturing factory",
+    "status": "active",
+    "created_at": "2025-11-17T00:00:00Z",
+    "updated_at": "2025-11-17T00:00:00Z",
+    "metadata": {
+      "location": "Building A",
+      "sensors": 24,
+      "type": "manufacturing"
+    }
+  },
+  {
+    "id": "2",
+    "name": "Building Twin",
+    "description": "Digital twin of a smart building",
+    "status": "maintenance",
+    "created_at": "2025-11-17T00:00:00Z",
+    "updated_at": "2025-11-17T00:00:00Z",
+    "metadata": {
+      "location": "Campus North",
+      "sensors": 56,
+      "type": "building"
+    }
+  },
+  {
+    "id": "3",
+    "name": "Vehicle Twin",
+    "description": "Digital twin of a connected vehicle",
+    "status": "inactive",
+    "created_at": "2025-11-17T00:00:00Z",
+    "updated_at": "2025-11-17T00:00:00Z",
+    "metadata": {
+      "model": "Tesla Model 3",
+      "sensors": 18,
+      "type": "vehicle"
+    }
+  }
+]

@@ -1,0 +1,69 @@
+[package]
+name = "digital-twin-desktop"
+version = "0.1.0"
+edition = "2021"
+
+[build-dependencies]
+tauri-build = { version = "2.0", features = [] }
+
+[dependencies]
+# Tauri framework
+tauri = { version = "2.0", features = ["macos-private-api"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# Database
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# Serialization
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# AI/LLM
+async-openai = "0.20"
+anthropic-sdk = "0.2"
+
+# HTTP client
+reqwest = { version = "0.12", features = ["json", "stream"] }
+
+# WebSocket
+tokio-tungstenite = "0.22"
+
+# Industrial protocols
+modbus = "1.1"
+paho-mqtt = "0.12"
+
+# Cryptography
+ring = "0.17"
+
+# Additional common dependencies
+anyhow = "1.0"
+thiserror = "1.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+chrono = { version = "0.4", features = ["serde"] }
+async-trait = "0.1"
+futures = "0.3"
+uuid = { version = "1.6", features = ["v4", "serde"] }
+
+# Test dependencies
+[dev-dependencies]
+# Mocking
+mockall = "0.12"
+
+# Test frameworks
+test-case = "3.3"
+rstest = "0.18"
+tokio-test = "0.4"
+
+# Assertions
+pretty_assertions = "1.4"
+
+# Test utilities
+tempfile = "3.8"
+rand = "0.8"
+
+[features]
+default = ["custom-protocol"]
+custom-protocol = ["tauri/custom-protocol"]

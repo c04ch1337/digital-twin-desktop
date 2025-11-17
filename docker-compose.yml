@@ -1,0 +1,76 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: digital-twin-desktop
+    volumes:
+      # Mount source code for live development
+      - ./src:/app/src
+      - ./ui/src:/app/ui/src
+      - ./ui/public:/app/ui/public
+      - ./ui/index.html:/app/ui/index.html
+      - ./ui/cypress:/app/ui/cypress
+      - ./tests:/app/tests
+      # Mount configuration files
+      - ./Cargo.toml:/app/Cargo.toml
+      - ./Cargo.lock:/app/Cargo.lock
+      - ./tauri.conf.json:/app/tauri.conf.json
+      - ./ui/package.json:/app/ui/package.json
+      - ./ui/tsconfig.json:/app/ui/tsconfig.json
+      - ./ui/vite.config.ts:/app/ui/vite.config.ts
+      # Mount scripts
+      - ./scripts:/app/scripts
+      # Mount data directory for persistence
+      - ./data:/app/data
+      # Mount environment files
+      - ./.env.local:/app/.env.local
+    ports:
+      # Tauri development server
+      - "1420:1420"
+      # Vite development server
+      - "5173:5173"
+    environment:
+      - RUST_BACKTRACE=1
+      - RUST_LOG=info
+      - TAURI_DEV_SERVER_PORT=1420
+      - VITE_DEV_SERVER_PORT=5173
+    command: ./scripts/dev.sh
+    # Enable interactive terminal
+    tty: true
+    stdin_open: true
+
+  # Optional: Add a database service if needed
+  db:
+    image: sqlite:latest
+    container_name: digital-twin-db
+    volumes:
+      - ./data:/data
+    restart: unless-stopped
+
+  # Optional: Add MQTT broker for IoT device simulation
+  mqtt:
+    image: eclipse-mosquitto:latest
+    container_name: digital-twin-mqtt
+    ports:
+      - "1883:1883"
+      - "9001:9001"
+    volumes:
+      - ./mqtt/config:/mosquitto/config
+      - ./mqtt/data:/mosquitto/data
+      - ./mqtt/log:/mosquitto/log
+    restart: unless-stopped
+
+  # Optional: Add Modbus simulator for industrial device testing
+  modbus-simulator:
+    image: oitc/modbus-server:latest
+    container_name: digital-twin-modbus
+    ports:
+      - "502:502"
+    restart: unless-stopped
+
+networks:
+  default:
+    name: digital-twin-network

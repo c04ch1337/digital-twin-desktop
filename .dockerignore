@@ -1,0 +1,59 @@
+# Version control
+.git
+.gitignore
+.github
+
+# Build artifacts
+target/
+ui/dist/
+ui/node_modules/
+**/*.rs.bk
+**/*.swp
+**/*.swo
+
+# Environment files (except example)
+.env
+.env.local
+.env.development
+.env.test
+.env.production
+!.env.local.example
+
+# Editor files
+.vscode/
+.idea/
+*.sublime-*
+.DS_Store
+
+# Documentation
+docs/
+*.md
+!README.md
+
+# Test files
+**/__tests__/
+**/*.spec.*
+**/*.test.*
+
+# Temporary files
+**/*.tmp
+**/*.temp
+**/*.log
+**/tmp/
+**/temp/
+logs/
+
+# Data files
+data/*
+!data/.gitkeep
+
+# Docker files (to avoid recursion)
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# Miscellaneous
+.cursor/
+.editorconfig
+.eslintrc
+.prettierrc
