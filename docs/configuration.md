@@ -6,11 +6,12 @@ This document provides comprehensive information about configuring the Digital T
 
 1. [Overview](#overview)
 2. [Environment Files](#environment-files)
-3. [Configuration Sections](#configuration-sections)
-4. [Agent Configuration](#agent-configuration)
-5. [Environment-Specific Examples](#environment-specific-examples)
-6. [Security Best Practices](#security-best-practices)
-7. [Troubleshooting](#troubleshooting)
+3. [LLM Provider Configuration](#llm-provider-configuration)
+4. [Configuration Sections](#configuration-sections)
+5. [Agent Configuration](#agent-configuration)
+6. [Environment-Specific Examples](#environment-specific-examples)
+7. [Security Best Practices](#security-best-practices)
+8. [Troubleshooting](#troubleshooting)
 
 ## Overview
 
@@ -62,6 +63,144 @@ Test environment configuration with:
 - Mock API keys
 - Relaxed rate limits for testing
 
+## LLM Provider Configuration
+
+The Digital Twin Desktop supports multiple LLM providers for flexibility and cost optimization. You can configure and switch between different providers based on your needs.
+
+### Supported Providers
+
+1. **OpenAI** - GPT-4, GPT-3.5-turbo models
+2. **Anthropic** - Claude models
+3. **OpenRouter** - Aggregated access to multiple models
+4. **Google Gemini** - Google's Gemini models
+5. **HuggingFace** - Open-source models via Inference API
+6. **Ollama** - Local LLM execution
+7. **LMStudio** - Local LLM execution with GUI
+
+### Provider Selection
+
+Set the default provider using:
+
+```env
+LLM_DEFAULT_PROVIDER=openai
+```
+
+Available values: `openai`, `anthropic`, `openrouter`, `gemini`, `huggingface`, `ollama`, `lmstudio`
+
+### OpenAI Configuration
+
+```env
+LLM_OPENAI_API_KEY=your_openai_api_key_here
+LLM_OPENAI_DEFAULT_MODEL=gpt-4
+LLM_OPENAI_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_OPENAI_API_KEY` | String | Required | OpenAI API key |
+| `LLM_OPENAI_DEFAULT_MODEL` | String | `gpt-4` | Default model to use |
+| `LLM_OPENAI_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+### Anthropic Configuration
+
+```env
+LLM_ANTHROPIC_API_KEY=your_anthropic_api_key_here
+LLM_ANTHROPIC_DEFAULT_MODEL=claude-2
+LLM_ANTHROPIC_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_ANTHROPIC_API_KEY` | String | Required | Anthropic API key |
+| `LLM_ANTHROPIC_DEFAULT_MODEL` | String | `claude-2` | Default model to use |
+| `LLM_ANTHROPIC_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+### OpenRouter Configuration
+
+```env
+LLM_OPENROUTER_API_KEY=your_openrouter_api_key_here
+LLM_OPENROUTER_DEFAULT_MODEL=openrouter/auto
+LLM_OPENROUTER_SITE_URL=https://your-site.com
+LLM_OPENROUTER_SITE_NAME=Your Site Name
+LLM_OPENROUTER_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_OPENROUTER_API_KEY` | String | Required | OpenRouter API key |
+| `LLM_OPENROUTER_DEFAULT_MODEL` | String | `openrouter/auto` | Default model to use |
+| `LLM_OPENROUTER_SITE_URL` | String | Optional | Your site URL for OpenRouter |
+| `LLM_OPENROUTER_SITE_NAME` | String | Optional | Your site name for OpenRouter |
+| `LLM_OPENROUTER_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+### Google Gemini Configuration
+
+```env
+LLM_GEMINI_API_KEY=your_gemini_api_key_here
+LLM_GEMINI_DEFAULT_MODEL=gemini-pro
+LLM_GEMINI_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_GEMINI_API_KEY` | String | Required | Google Gemini API key |
+| `LLM_GEMINI_DEFAULT_MODEL` | String | `gemini-pro` | Default model to use |
+| `LLM_GEMINI_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+### HuggingFace Configuration
+
+```env
+LLM_HUGGINGFACE_API_KEY=your_huggingface_api_key_here
+LLM_HUGGINGFACE_DEFAULT_MODEL=gpt2
+LLM_HUGGINGFACE_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_HUGGINGFACE_API_KEY` | String | Required | HuggingFace API key |
+| `LLM_HUGGINGFACE_DEFAULT_MODEL` | String | `gpt2` | Default model to use |
+| `LLM_HUGGINGFACE_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+### Ollama Configuration (Local)
+
+```env
+LLM_OLLAMA_BASE_URL=http://localhost:11434
+LLM_OLLAMA_DEFAULT_MODEL=llama2
+LLM_OLLAMA_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_OLLAMA_BASE_URL` | String | `http://localhost:11434` | Ollama server URL |
+| `LLM_OLLAMA_DEFAULT_MODEL` | String | `llama2` | Default model to use |
+| `LLM_OLLAMA_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+**Setup Instructions**:
+1. Download Ollama from https://ollama.ai
+2. Run `ollama serve` to start the server
+3. Pull a model: `ollama pull llama2`
+4. Configure the base URL and model name
+
+### LMStudio Configuration (Local)
+
+```env
+LLM_LMSTUDIO_BASE_URL=http://localhost:1234
+LLM_LMSTUDIO_DEFAULT_MODEL=local-model
+LLM_LMSTUDIO_TIMEOUT_SECONDS=30
+```
+
+| Variable | Type | Default | Description |
+|----------|------|---------|-------------|
+| `LLM_LMSTUDIO_BASE_URL` | String | `http://localhost:1234` | LMStudio server URL |
+| `LLM_LMSTUDIO_DEFAULT_MODEL` | String | `local-model` | Default model to use |
+| `LLM_LMSTUDIO_TIMEOUT_SECONDS` | Integer | `30` | Request timeout in seconds |
+
+**Setup Instructions**:
+1. Download LMStudio from https://lmstudio.ai
+2. Launch LMStudio and load a model
+3. Start the local server (default port 1234)
+4. Configure the base URL and model name
+
 ## Configuration Sections
 
 ### API Keys for LLM Services
@@ -69,9 +208,12 @@ Test environment configuration with:
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
 ANTHROPIC_API_KEY=your_anthropic_api_key_here
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+GEMINI_API_KEY=your_gemini_api_key_here
+HUGGINGFACE_API_KEY=your_huggingface_api_key_here
 ```
 
-**Description**: API keys for OpenAI and Anthropic services.
+**Description**: API keys for various LLM services. See [LLM Provider Configuration](#llm-provider-configuration) for detailed setup instructions.
 
 **Security**: Store these securely using environment variables in production. Never commit real keys to version control.
 

@@ -52,6 +52,21 @@ pub struct LLMConfig {
     
     /// Anthropic configuration
     pub anthropic: AnthropicConfig,
+    
+    /// OpenRouter configuration
+    pub openrouter: OpenRouterConfig,
+    
+    /// Gemini configuration
+    pub gemini: GeminiConfig,
+    
+    /// HuggingFace configuration
+    pub huggingface: HuggingFaceConfig,
+    
+    /// Ollama configuration
+    pub ollama: OllamaConfig,
+    
+    /// LMStudio configuration
+    pub lmstudio: LMStudioConfig,
 }
 
 /// OpenAI configuration
@@ -75,6 +90,77 @@ pub struct OpenAIConfig {
 pub struct AnthropicConfig {
     /// API key
     pub api_key: Option<String>,
+    
+    /// Default model
+    pub default_model: String,
+    
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+/// OpenRouter configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OpenRouterConfig {
+    /// API key
+    pub api_key: Option<String>,
+    
+    /// Default model
+    pub default_model: String,
+    
+    /// Site URL for OpenRouter
+    pub site_url: Option<String>,
+    
+    /// Site name for OpenRouter
+    pub site_name: Option<String>,
+    
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+/// Google Gemini configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GeminiConfig {
+    /// API key
+    pub api_key: Option<String>,
+    
+    /// Default model
+    pub default_model: String,
+    
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+/// HuggingFace configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct HuggingFaceConfig {
+    /// API key
+    pub api_key: Option<String>,
+    
+    /// Default model
+    pub default_model: String,
+    
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+/// Ollama configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct OllamaConfig {
+    /// Base URL for Ollama server
+    pub base_url: String,
+    
+    /// Default model
+    pub default_model: String,
+    
+    /// Request timeout in seconds
+    pub timeout_seconds: u64,
+}
+
+/// LMStudio configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LMStudioConfig {
+    /// Base URL for LMStudio server
+    pub base_url: String,
     
     /// Default model
     pub default_model: String,
@@ -449,6 +535,33 @@ impl Default for AppConfig {
                 anthropic: AnthropicConfig {
                     api_key: None,
                     default_model: "claude-2".to_string(),
+                    timeout_seconds: 30,
+                },
+                openrouter: OpenRouterConfig {
+                    api_key: None,
+                    default_model: "openrouter/auto".to_string(),
+                    site_url: None,
+                    site_name: None,
+                    timeout_seconds: 30,
+                },
+                gemini: GeminiConfig {
+                    api_key: None,
+                    default_model: "gemini-pro".to_string(),
+                    timeout_seconds: 30,
+                },
+                huggingface: HuggingFaceConfig {
+                    api_key: None,
+                    default_model: "gpt2".to_string(),
+                    timeout_seconds: 30,
+                },
+                ollama: OllamaConfig {
+                    base_url: "http://localhost:11434".to_string(),
+                    default_model: "llama2".to_string(),
+                    timeout_seconds: 30,
+                },
+                lmstudio: LMStudioConfig {
+                    base_url: "http://localhost:1234".to_string(),
+                    default_model: "local-model".to_string(),
                     timeout_seconds: 30,
                 },
             },

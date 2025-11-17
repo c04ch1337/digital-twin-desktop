@@ -5,7 +5,10 @@
 use digital_twin_desktop::core::domain::models::{
     agent::Agent,
     conversation::{Conversation, Message, MessageRole},
-    digital_twin::{DigitalTwin, TwinStatus},
+    digital_twin::{
+        DigitalTwin, TwinState, TwinType, TwinProperties, SyncConfiguration,
+        VisualizationConfig, TwinMetadata,
+    },
     sensor_data::{SensorData, SensorType},
     tool::{Tool, ToolExecution, ToolExecutionStatus},
 };
@@ -18,13 +21,27 @@ pub fn create_test_twin() -> DigitalTwin {
         id: Uuid::new_v4(),
         name: "Test Twin".to_string(),
         description: "A test digital twin".to_string(),
-        status: TwinStatus::Active,
+        twin_type: TwinType::Device {
+            device_type: "sensor".to_string(),
+            manufacturer: Some("TestCorp".to_string()),
+            model: Some("T1000".to_string()),
+        },
+        state: TwinState::Active,
+        agent_ids: Vec::new(),
+        data_sources: Vec::new(),
+        properties: TwinProperties::default(),
+        sync_config: SyncConfiguration::default(),
+        visualization_config: VisualizationConfig::default(),
+        metadata: TwinMetadata {
+            version: "1.0.0".to_string(),
+            owner: "test-user".to_string(),
+            tags: vec!["test".to_string()],
+            documentation: Vec::new(),
+            custom_fields: std::collections::HashMap::new(),
+        },
         created_at: Utc::now(),
         updated_at: Utc::now(),
-        metadata: serde_json::json!({
-            "version": "1.0",
-            "type": "test"
-        }),
+        last_sync_at: None,
     }
 }
 

@@ -2,9 +2,19 @@
 
 mod anthropic;
 mod openai;
+mod openrouter;
+mod gemini;
+mod huggingface;
+mod ollama;
+mod lmstudio;
 
 pub use anthropic::AnthropicClient;
 pub use openai::OpenAIClient;
+pub use openrouter::OpenRouterClient;
+pub use gemini::GeminiClient;
+pub use huggingface::HuggingFaceClient;
+pub use ollama::OllamaClient;
+pub use lmstudio::LMStudioClient;
 
 use async_trait::async_trait;
 use anyhow::Result;
@@ -33,6 +43,11 @@ impl LLMClientFactory for DefaultLLMClientFactory {
         match provider.to_lowercase().as_str() {
             "anthropic" => Ok(Box::new(AnthropicClient::new(config)?)),
             "openai" => Ok(Box::new(OpenAIClient::new(config)?)),
+            "openrouter" => Ok(Box::new(OpenRouterClient::new(config)?)),
+            "gemini" => Ok(Box::new(GeminiClient::new(config)?)),
+            "huggingface" => Ok(Box::new(HuggingFaceClient::new(config)?)),
+            "ollama" => Ok(Box::new(OllamaClient::new(config)?)),
+            "lmstudio" => Ok(Box::new(LMStudioClient::new(config)?)),
             _ => Err(LLMError::ProviderError {
                 provider: provider.to_string(),
                 message: "Unsupported LLM provider".to_string(),
@@ -44,6 +59,11 @@ impl LLMClientFactory for DefaultLLMClientFactory {
         vec![
             "anthropic".to_string(),
             "openai".to_string(),
+            "openrouter".to_string(),
+            "gemini".to_string(),
+            "huggingface".to_string(),
+            "ollama".to_string(),
+            "lmstudio".to_string(),
         ]
     }
 }
