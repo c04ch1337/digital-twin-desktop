@@ -24,6 +24,17 @@ pub fn run() {
             let config = infrastructure::config::AppConfig::load()
                 .expect("Failed to load configuration");
             
+            // Load system prompt from file
+            let system_prompt = std::fs::read_to_string(&config.agent.system_prompt_file)
+                .unwrap_or_else(|_| {
+                    tracing::warn!("Failed to load system prompt from {:?}, using default", config.agent.system_prompt_file);
+                    "You are a helpful Digital Twin Agent.".to_string()
+                });
+            
+            tracing::info!("Loaded system prompt from {:?}", config.agent.system_prompt_file);
+            tracing::debug!("Agent configuration: model={}, temperature={}, max_tokens={}",
+                config.agent.default_model, config.agent.temperature, config.agent.max_tokens);
+            
             // Initialize security components
             infrastructure::security::init()
                 .expect("Failed to initialize security module");
@@ -49,8 +60,9 @@ pub fn run() {
             app.manage(rate_limit_middleware);
             app.manage(validation_middleware);
             app.manage(config);
+            app.manage(system_prompt);
             
-            tracing::info!("Digital Twin Desktop started");
+            tracing::info!("Digital Twin Desktop started with agent configuration loaded");
             
             Ok(())
         })

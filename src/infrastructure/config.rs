@@ -20,6 +20,9 @@ pub struct AppConfig {
     
     /// Logging configuration
     pub logging: LoggingConfig,
+    
+    /// Agent configuration
+    pub agent: AgentConfig,
 }
 
 /// Database configuration
@@ -257,6 +260,85 @@ pub struct LoggingConfig {
     pub json_format: bool,
 }
 
+/// Agent configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentConfig {
+    /// System prompt file path
+    pub system_prompt_file: PathBuf,
+    
+    /// Default model for agents
+    pub default_model: String,
+    
+    /// Temperature for model responses
+    pub temperature: f32,
+    
+    /// Maximum tokens per response
+    pub max_tokens: u32,
+    
+    /// Top P for nucleus sampling
+    pub top_p: f32,
+    
+    /// Frequency penalty
+    pub frequency_penalty: f32,
+    
+    /// Presence penalty
+    pub presence_penalty: f32,
+    
+    /// Memory configuration
+    pub memory: AgentMemoryConfig,
+    
+    /// Long-term memory configuration
+    pub long_term_memory: AgentLongTermMemoryConfig,
+    
+    /// Rate limiting configuration
+    pub rate_limit: AgentRateLimitConfig,
+}
+
+/// Agent memory configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentMemoryConfig {
+    /// Enable memory
+    pub enabled: bool,
+    
+    /// Maximum messages to keep in memory
+    pub max_messages: u32,
+    
+    /// Retention period in days
+    pub retention_days: u32,
+    
+    /// Enable memory compression
+    pub compression_enabled: bool,
+}
+
+/// Agent long-term memory configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentLongTermMemoryConfig {
+    /// Enable long-term memory
+    pub enabled: bool,
+    
+    /// Embedding model for similarity search
+    pub embedding_model: String,
+    
+    /// Similarity threshold for retrieval
+    pub similarity_threshold: f32,
+    
+    /// Maximum entries in long-term memory
+    pub max_entries: u32,
+}
+
+/// Agent rate limiting configuration
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct AgentRateLimitConfig {
+    /// Number of requests allowed
+    pub requests: u32,
+    
+    /// Time window in seconds
+    pub window_seconds: u64,
+    
+    /// Burst size for rate limiting
+    pub burst_size: u32,
+}
+
 impl AppConfig {
     /// Load configuration from files and environment
     pub fn load() -> Result<Self, ConfigError> {
@@ -279,7 +361,25 @@ impl AppConfig {
             .set_default("tools.mqtt.timeout_seconds", 30)?
             .set_default("security.token_expiration", 3600)?
             .set_default("logging.level", "info")?
-            .set_default("logging.json_format", false)?;
+            .set_default("logging.json_format", false)?
+            .set_default("agent.system_prompt_file", "./config/system_prompt.txt")?
+            .set_default("agent.default_model", "gpt-4")?
+            .set_default("agent.temperature", 0.7)?
+            .set_default("agent.max_tokens", 2048)?
+            .set_default("agent.top_p", 0.9)?
+            .set_default("agent.frequency_penalty", 0.0)?
+            .set_default("agent.presence_penalty", 0.0)?
+            .set_default("agent.memory.enabled", true)?
+            .set_default("agent.memory.max_messages", 100)?
+            .set_default("agent.memory.retention_days", 30)?
+            .set_default("agent.memory.compression_enabled", true)?
+            .set_default("agent.long_term_memory.enabled", true)?
+            .set_default("agent.long_term_memory.embedding_model", "text-embedding-3-small")?
+            .set_default("agent.long_term_memory.similarity_threshold", 0.7)?
+            .set_default("agent.long_term_memory.max_entries", 10000)?
+            .set_default("agent.rate_limit.requests", 100)?
+            .set_default("agent.rate_limit.window_seconds", 60)?
+            .set_default("agent.rate_limit.burst_size", 10)?;
 
         // Add configuration from files
         if let Ok(env) = std::env::var("APP_ENV") {
@@ -321,6 +421,11 @@ impl AppConfig {
     /// Get logging configuration
     pub fn logging(&self) -> &LoggingConfig {
         &self.logging
+    }
+
+    /// Get agent configuration
+    pub fn agent(&self) -> &AgentConfig {
+        &self.agent
     }
 }
 
@@ -404,6 +509,32 @@ impl Default for AppConfig {
                 level: "info".to_string(),
                 file_path: None,
                 json_format: false,
+            },
+            agent: AgentConfig {
+                system_prompt_file: "./config/system_prompt.txt".into(),
+                default_model: "gpt-4".to_string(),
+                temperature: 0.7,
+                max_tokens: 2048,
+                top_p: 0.9,
+                frequency_penalty: 0.0,
+                presence_penalty: 0.0,
+                memory: AgentMemoryConfig {
+                    enabled: true,
+                    max_messages: 100,
+                    retention_days: 30,
+                    compression_enabled: true,
+                },
+                long_term_memory: AgentLongTermMemoryConfig {
+                    enabled: true,
+                    embedding_model: "text-embedding-3-small".to_string(),
+                    similarity_threshold: 0.7,
+                    max_entries: 10000,
+                },
+                rate_limit: AgentRateLimitConfig {
+                    requests: 100,
+                    window_seconds: 60,
+                    burst_size: 10,
+                },
             },
         }
     }
